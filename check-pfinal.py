@@ -54,6 +54,8 @@ github_dict = {
     "juanmis": "Jmita", 
     "molina": "jmartinezmolina",
     "afrutos": "alejandrodefrutos",
+    "carlosjloh": "CarlosJLoH",
+    "sagun": "caarrieta",
 }
 
 if len(sys.argv) != 2:
