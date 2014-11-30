@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Script de comprobaciÛn de entrega de pr·ctica
+Script de comprobaci√≥n de entrega de pr√°ctica
 
 Para ejecutarlo, desde la shell: 
  $ python check-pfinal.py login_laboratorio
@@ -15,7 +15,7 @@ import sys
 import subprocess
 
 
-# Diccionario con la relaciÛn de nombres de usuario
+# Diccionario con la relaci√≥n de nombres de usuario
 # en los laboratorios (clave) y nombres de usuario en GitHub (valor)
 github_dict = {
     "iarranz": "igarag",
@@ -74,7 +74,7 @@ files = ['README.md',
          '.gitignore',
          'uaclient.py',
          'uaserver.py',
-         'proxy_registar.py',
+         'proxy_registrar.py',
          'ua1.xml',
          'ua2.xml',
          'pr.xml',
@@ -94,11 +94,11 @@ python_files = ['uaclient.py',
 avanzadasDict = {
     u"Cabecera proxy": 0.2,
     u"Reestablecer usuarios conectados": 0.2,
-    u'IntegraciÛn de (c)vlc': 0.2,
-    u"Pr·ctica realizada en inglÈs": 0.2,
-    u"IntegraciÛn de (c)vlc con hilos": 0.3,
-    u"Consistencia frente a valores errÛneos": 0.5,
-    u"Hilos para el envÌo de audio vÌa RTP": 0.7,
+    u'Integraci√≥n de (c)vlc': 0.2,
+    u"Pr√°ctica realizada en ingl√©s": 0.2,
+    u"Integraci√≥n de (c)vlc con hilos": 0.3,
+    u"Consistencia frente a valores err√≥neos": 0.5,
+    u"Hilos para el env√≠o de audio v√≠a RTP": 0.7,
     u"Mecanismo de registro seguro": 1.0
     }
 
@@ -126,7 +126,6 @@ except OSError:
     print 
     sys.exit()
 
-
 for file in student_file_list:
     if file in files:
         if file in ["avanzadas.txt", "passwords.txt"]:
@@ -142,7 +141,7 @@ for file in student_file_list:
 
 
 if ficheros_entregados == len(files)-1:
-    print "La entrega de la parte b·sica es correcta."
+    print "La entrega de la parte b√°sica es correcta."
     print
 
 if avanzadas:
@@ -176,15 +175,16 @@ for filename in student_file_list:
         output2 = subprocess.Popen(["wc"], stdin=output.stdout, stdout=subprocess.PIPE)
         lines = output2.communicate()[0].split()[0]
         if int(lines) < 1:
-            print "Error: La captura realizada y guardada en " + filename + " est· vacÌa."
+            print "Error: La captura realizada y guardada en " + filename + " est√° vac√≠a."
             error = 1
         elif int(lines) > 50:
             error = 1
-            print "Aviso: La captura realizada y guardada en " + filename + " contiene m·s de 50 paquetes."
-            print "       Probablemente no estÈ filtrada convenientemente."
+            print "Aviso: La captura realizada y guardada en " + filename + " contiene m√°s de 50 paquetes."
+            print "       Probablemente no est√© filtrada convenientemente."
             print 
 
 if error_ficheros:
+    print 
     print "Error: solamente hay que subir al repositorio los ficheros indicados en las instrucciones."
     print 
     print "Utiliza 'git ls-files' para ver los ficheros que hay actualmente en el repositorio."
@@ -199,7 +199,7 @@ if puntuacion_max_avanzadas > 2.0:
 if avanzadas:
     print
     print "Se han implementado " + str(numero_avanzadas) + " requisitos avanzados"
-    print "La puntuaciÛn m·xima que se puede obtener por requisitos avanzados es de " + str(puntuacion_max_avanzadas) + " puntos"
+    print "La puntuaci√≥n m√°xima que se puede obtener por requisitos avanzados es de " + str(puntuacion_max_avanzadas) + " puntos"
     print 
 
 if not error:
