@@ -50,6 +50,8 @@ class log2file:
     def print2file(self, text):
         if self.summary and len(text.split('\r\n', 1)[1]) > 0:
             text = text.split('\r\n', 1)[0] + ' [...]\r\n'
+        else:
+            text = text.replace('\r\n', ' ') + '\r\n'
         print text[:-2]
         # file exists
         Method = 'a'
@@ -79,6 +81,7 @@ class UAclient_SIP:
         self.addr = addr
         self.user = user
         # recv list
+        self.Method = ''
         self.trok = [self.ver, '100', 'Trying', self.ver,
                      '180', 'Ringing', self.ver, '200', 'OK']
         # Log
@@ -104,7 +107,10 @@ class UAclient_SIP:
                     + 'm=audio ' + PORT_RTP + ' RTP'
         LINE += '\r\n'
         # -- END --
+        # -- send --
         self.my_socket.send(LINE)
+        # --Method --
+        self.Method = Method
         # -- Debug --
         Debug = 'Sent to {}:{}: {}'.format(self.addr[0], self.addr[1], LINE)
         self.log.print2file(Debug)
@@ -118,11 +124,12 @@ class UAclient_SIP:
                 self.addr[0], str(self.addr[1]))
             self.log.print2file(Debug)
         else:
+            # -- Debug --
             Debug = 'Received from {}:{}: {}'.format(
                     data[1][0], data[1][1], data[0])
             self.log.print2file(Debug)
 
-            if data[0].split()[:9] == self.trok:
+            if data[0].split()[:9] == self.trok and self.Method == 'INVITE':
                 self.send('ACK')
                 # -- RTP -- #
                 IPs = data[0].split()[9:][2]
@@ -161,7 +168,7 @@ class toRTP:
         self.rtpSocket.settimeout(timeout)
         try:
             self.rtpSocket.bind(('', recvPort))
-        except:
+        except socket.error:
             raise
 
     def _send(self):
@@ -181,17 +188,9 @@ class toRTP:
                 data = self.rtpSocket.recvfrom(buff)
             except socket.timeout:
                 break
-            except:
-                raise
             else:
                 print data[0], 'from', data[1]
         self.close()
-
-    """
-    def _recv(self):
-        thread = myThread(self._recv)
-        thread.start()
-    """
 
     def close(self):
         self.rtpSocket.close()
@@ -207,16 +206,16 @@ if __name__ == '__main__':
     x = XML_handler(sys.argv[1])
 
     # xml Get Parametros
-    addr = (x.l('reg_ip'), int(x.l('reg_puerto')))
-    logpath = x.l('log_path')
+    addr = (x.l('reg_ip'), int(x.l('reg_puerto')))            # 1. addr
+    logpath = x.l('log_path')                                 # 2. logpath
 
     # -- REGISTER --
     if sys.argv[2] == 'REGISTER':
         IPlocal = socket.gethostbyname(socket.gethostname())
         user = '{}@{}:{}'.format(
-            x.l('acc_username'), IPlocal, x.l('uas_puerto'))
+            x.l('acc_username'), IPlocal, x.l('uas_puerto'))  # 3.1 user    [s]
         try:
-            EXPIRES = str(int(sys.argv[3]))
+            EXPIRES = str(int(sys.argv[3]))                   # 4.1 expires [g]
         except ValueError:
             sys.exit(Usage)
 
@@ -224,13 +223,13 @@ if __name__ == '__main__':
     elif sys.argv[2] == 'INVITE' or 'BYE':
         mat = re.match(r'^\w+@(\w+|\d+(\.\d+){3})$', sys.argv[3].strip())
         if mat is not None:
-            IP = socket.gethostbyname(mat.groups()[0])
-            user = sys.argv[3]
+            user = sys.argv[3]                                # 3.2 user    [s]
+            IP = socket.gethostbyname(mat.groups()[0])        # 4.2 IP      [g]
         else:
             sys.exit(Usage)
         # -- RTP --
-        PORT_RTP = x.l('rtp_puerto')
-        AUDIO = x.l('aud_path')
+        PORT_RTP = x.l('rtp_puerto')                          # 5. PortRTP  [g]
+        AUDIO = x.l('aud_path')                               # 6. audio    [g]
 
     # SIP class Init
     mySip = UAclient_SIP(addr, user, logpath)
