@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!DOCTYPE note SYSTEM 'UserAgent.dtd'>
+<config>
+	<account username='ziyua' passwd='' />
+	<uaserver ip='' puerto='5060' /> <!--ip is 127.0.0.1, if ip put ''-->
+	<rtpaudio puerto='5010' />
+	<regproxy ip='127.0.0.1' puerto='5061' />
+	<log path='sip.log' />
+	<audio path='cancion.mp3' />
+</config>
