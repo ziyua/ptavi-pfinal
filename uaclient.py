@@ -9,10 +9,10 @@ import socket
 import sys
 import re
 
-# ------------------------------------------
-# from xml.sax import make_parser
-# from xml.sax.handler import ContentHandler
-# ------------------------------------------
+"""
+from xml.sax import make_parser
+from xml.sax.handler import ContentHandler
+"""
 
 
 class XML_handler(ContentHandler):
@@ -30,14 +30,11 @@ class XML_handler(ContentHandler):
             dic_value = attrs.getValue(attrName).encode('utf-8')
             self.xmlInfo[dic_key] = dic_value
 
-    def l(self, strAttr):
-        if strAttr in self.xmlInfo:
-            return self.xmlInfo[strAttr]
 
-# --------------------------
-# from os.path import exists
-# import time
-# --------------------------
+"""
+import os
+import time
+"""
 
 
 class log2file:
@@ -45,13 +42,10 @@ class log2file:
     def __init__(self, path):
         self.path = path
         self.timeFormat = '%Y%m%d%H%M%S'  # 24Hours
-        self.summary = False
 
     def print2file(self, text):
-        if self.summary and len(text.split('\r\n', 1)[1]) > 0:
-            text = text.split('\r\n', 1)[0] + ' [...]\r\n'
-        else:
-            text = text.replace('\r\n', ' ') + '\r\n'
+        print repr(text)
+        text = text.replace('\r\n', ' ') + '\r\n'
         print text[:-2]
         # file exists
         Method = 'a'
@@ -65,11 +59,10 @@ class log2file:
         ofile.close()
 
 
-# -------------
-# import socket
-# import log2file
-# import methodSIP
-# -------------
+"""
+import socket
+import log2file
+"""
 
 
 class UAclient_SIP:
@@ -82,6 +75,7 @@ class UAclient_SIP:
         self.user = user
         # recv list
         self.Method = ''
+        # trying + Ringing + Ok = trok
         self.trok = [self.ver, '100', 'Trying', self.ver,
                      '180', 'Ringing', self.ver, '200', 'OK']
         # Log
@@ -91,7 +85,6 @@ class UAclient_SIP:
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.my_socket.connect(addr)
-        # self.my_socket.settimeout(5.0)
 
     def send(self, Method):
         LINE = '{} sip:{} {}\r\n'.format(Method, self.user, self.ver)
@@ -99,15 +92,14 @@ class UAclient_SIP:
         if Method == 'REGISTER':
             LINE += 'Expires: ' + EXPIRES + '\r\n'
         elif Method == 'INVITE':
-            LINE += 'Content-Type: application/sdp\r\n\r\n'
-            LINE += 'v=0\r\n' \
+            LINE += 'Content-Type: application/sdp\r\n\r\n' \
+                    + 'v=0\r\n' \
                     + 'o=' + self.user + ' ' + IP + ' \r\n' \
                     + 's=misesion\r\n' \
                     + 't=0\r\n' \
-                    + 'm=audio ' + PORT_RTP + ' RTP'
+                    + 'm=audio ' + RTPORT + ' RTP'
         LINE += '\r\n'
         # -- END --
-        # -- send --
         self.my_socket.send(LINE)
         # --Method --
         self.Method = Method
@@ -134,13 +126,13 @@ class UAclient_SIP:
                 # -- RTP -- #
                 IPs = data[0].split()[9:][2]
                 Ports = int(data[0].split()[9:][-2])
-                rtps = toRTP((IPs, Ports), AUDIO, int(PORT_RTP))
+                rtps = toRTP((IPs, Ports), AUDIO, int(RTPORT))
                 rtps.send()
                 rtps.recv()
 
     def close(self):
-        # -- Debug --
         self.my_socket.close()
+        # -- Debug -- #
         self.log.print2file('Finishing.\r\n')
 
 
@@ -148,6 +140,7 @@ from threading import Thread
 
 
 class myThread(Thread):
+
     def __init__(self, func):
         super(myThread, self).__init__()
         self.func = func
@@ -189,31 +182,33 @@ class toRTP:
             except socket.timeout:
                 break
             else:
-                print data[0], 'from', data[1]
-        self.close()
-
-    def close(self):
+                print data[0][:10], 'from', data[1]
         self.rtpSocket.close()
 
 
 if __name__ == '__main__':
     Method = ['REGISTER', 'INVITE', 'BYE']
     Usage = 'Usage: python uaclient.py config method option'
-    if len(sys.argv) != 4 or sys.argv[2] not in Method:
+    if len(sys.argv) != 4 \
+            or not os.path.exists(sys.argv[1]) \
+            or sys.argv[2] not in Method:
         sys.exit(Usage)
 
     # xml init
-    x = XML_handler(sys.argv[1])
+    xml = XML_handler(sys.argv[1])
 
     # xml Get Parametros
-    addr = (x.l('reg_ip'), int(x.l('reg_puerto')))            # 1. addr
-    logpath = x.l('log_path')                                 # 2. logpath
+    addr = xml.xmlInfo['reg_ip'], int(xml.xmlInfo['reg_puerto'])  # 1. addr
+    logpath = xml.xmlInfo['log_path']                             # 2. logpath
 
+    # Var ([g]: Global; [s]: Same name;)
     # -- REGISTER --
     if sys.argv[2] == 'REGISTER':
-        IPlocal = socket.gethostbyname(socket.gethostname())
+        ip_local = xml.xmlInfo['uas_ip'] == '' \
+            and '127.0.0.1' or xml.xmlInfo['uas_ip']
         user = '{}@{}:{}'.format(
-            x.l('acc_username'), IPlocal, x.l('uas_puerto'))  # 3.1 user    [s]
+            xml.xmlInfo['acc_username'], ip_local,
+            xml.xmlInfo['uas_puerto'])                        # 3.1 user    [s]
         try:
             EXPIRES = str(int(sys.argv[3]))                   # 4.1 expires [g]
         except ValueError:
@@ -228,9 +223,12 @@ if __name__ == '__main__':
         else:
             sys.exit(Usage)
         # -- RTP --
-        PORT_RTP = x.l('rtp_puerto')                          # 5. PortRTP  [g]
-        AUDIO = x.l('aud_path')                               # 6. audio    [g]
+        RTPORT = xml.xmlInfo['rtp_puerto']                  # 5. PortRTP  [g]
+        AUDIO = xml.xmlInfo['aud_path']                       # 6. audio    [g]
+        if not os.path.exists(AUDIO):
+            sys.exit(Usage)
 
+    # -- main -- #
     # SIP class Init
     mySip = UAclient_SIP(addr, user, logpath)
 
