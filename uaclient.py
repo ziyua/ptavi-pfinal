@@ -172,10 +172,8 @@ class toRTP:
         os.system(execute)
 
     def send(self):
-        if 1 == 2:
-            thread = myThread(self._send)
-            thread.start()
-        pass
+        thread = myThread(self._send)
+        thread.start()
 
     def recv(self, buff=1024):
         while 1:
