@@ -27,13 +27,11 @@ class UAhandler(SocketServer.DatagramRequestHandler):
             try:
                 head, body = line.split('\r\n\r\n')
             except ValueError:
-                print 'ValueError'
                 self.wfile.write('SIP/2.0 400 Bad Request\r\n\r\n')
 
             # if lines:
             mat = re.match(self.PROTOCOL, head.split('\r\n')[0])
             if not mat:
-                print 'recibido {} not mat!'.format(head.split('\r\n')[0])
                 self.wfile.write('SIP/2.0 400 Bad Request\r\n\r\n')
             else:
                 Method, userSIP = mat.groups()[:2]
