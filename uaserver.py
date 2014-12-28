@@ -28,6 +28,7 @@ class UAhandler(SocketServer.DatagramRequestHandler):
                 head, body = line.split('\r\n\r\n')
             except ValueError:
                 self.wfile.write('SIP/2.0 400 Bad Request\r\n\r\n')
+                break
 
             # if lines:
             mat = re.match(self.PROTOCOL, head.split('\r\n')[0])
@@ -80,14 +81,14 @@ if __name__ == '__main__':
     xml = XML_handler(sys.argv[1])
 
     # variables
-    addr = xml.xmlInfo['uas_ip'], int(xml.xmlInfo['uas_puerto'])
+    addr = xml.getInfo('uas_ip'), int(xml.getInfo('uas_puerto'))
 
     # global
-    ip_local = xml.xmlInfo['uas_ip'] == '' \
-        and '127.0.0.1' or xml.xmlInfo['uas_ip']
-    USER = '{}@{}'.format(xml.xmlInfo['acc_username'], ip_local)
-    RTPORT = xml.xmlInfo['rtp_puerto']
-    AUDIO = xml.xmlInfo['aud_path']
+    ip_local = xml.getInfo('uas_ip') == '' \
+        and '127.0.0.1' or xml.getInfo('uas_ip')
+    USER = '{}@{}'.format(xml.getInfo('acc_username'), ip_local)
+    RTPORT = xml.getInfo('rtp_puerto')
+    AUDIO = xml.getInfo('aud_path')
 
     # Socket Server
     serv = SocketServer.UDPServer(addr, UAhandler)
