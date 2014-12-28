@@ -17,9 +17,8 @@ from xml.sax.handler import ContentHandler
 
 class XML_handler(ContentHandler):
 
-    xmlInfo = {}
-
     def __init__(self, file):
+        self.xmlInfo = {}
         parser = make_parser()
         parser.setContentHandler(self)
         parser.parse(open(file))
@@ -30,6 +29,11 @@ class XML_handler(ContentHandler):
             dic_value = attrs.getValue(attrName).encode('utf-8')
             self.xmlInfo[dic_key] = dic_value
 
+    def getInfo(self, key):
+        if key in self.xmlInfo:
+            return self.xmlInfo[key]
+        else:
+            return ''
 
 """
 import os
@@ -94,7 +98,7 @@ class UAclient_SIP:
         elif Method == 'INVITE':
             LINE += 'Content-Type: application/sdp\r\n\r\n' \
                     + 'v=0\r\n' \
-                    + 'o=' + self.user + ' ' + IP + ' \r\n' \
+                    + 'o=' + ORIGEN + ' ' + IP + ' \r\n' \
                     + 's=misesion\r\n' \
                     + 't=0\r\n' \
                     + 'm=audio ' + RTPORT + ' RTP'
@@ -198,17 +202,17 @@ if __name__ == '__main__':
     xml = XML_handler(sys.argv[1])
 
     # xml Get Parametros
-    addr = xml.xmlInfo['reg_ip'], int(xml.xmlInfo['reg_puerto'])  # 1. addr
-    logpath = xml.xmlInfo['log_path']                             # 2. logpath
+    addr = xml.getInfo('reg_ip'), int(xml.getInfo('reg_puerto'))  # 1. addr
+    logpath = xml.getInfo('log_path')                             # 2. logpath
+    ip_local = xml.getInfo('uas_ip') == '' \
+        and '127.0.0.1' or xml.getInfo('uas_ip')
 
     # Var ([g]: Global; [s]: Same name;)
     # -- REGISTER --
     if sys.argv[2] == 'REGISTER':
-        ip_local = xml.xmlInfo['uas_ip'] == '' \
-            and '127.0.0.1' or xml.xmlInfo['uas_ip']
         user = '{}@{}:{}'.format(
-            xml.xmlInfo['acc_username'], ip_local,
-            xml.xmlInfo['uas_puerto'])                        # 3.1 user    [s]
+            xml.getInfo('acc_username'), ip_local,
+            xml.getInfo('uas_puerto'))                        # 3.1 user    [s]
         try:
             EXPIRES = str(int(sys.argv[3]))                   # 4.1 expires [g]
         except ValueError:
@@ -217,16 +221,17 @@ if __name__ == '__main__':
     # -- INVITE --
     elif sys.argv[2] == 'INVITE' or 'BYE':
         mat = re.match(r'^\w+@(\w+|\d+(\.\d+){3})$', sys.argv[3].strip())
-        if mat is not None:
-            user = sys.argv[3]                                # 3.2 user    [s]
-            IP = socket.gethostbyname(mat.groups()[0])        # 4.2 IP      [g]
-        else:
+        if not mat and not os.path.exists(xml.getInfo('aud_path')):
             sys.exit(Usage)
-        # -- RTP --
-        RTPORT = xml.xmlInfo['rtp_puerto']                  # 5. PortRTP  [g]
-        AUDIO = xml.xmlInfo['aud_path']                       # 6. audio    [g]
-        if not os.path.exists(AUDIO):
-            sys.exit(Usage)
+
+        user = sys.argv[3]                                    # 3.2 user    [s]
+        # SDP
+        IP = ip_local                                         # 4.2 IP      [g]
+        ORIGEN = '{}@{}'.format(
+            xml.getInfo('acc_username'), ip_local)            # 3.1.2 ORIGEN[g]
+        # SDP >> rtp
+        RTPORT = xml.getInfo('rtp_puerto')                    # 6. PortRTP  [g]
+        AUDIO = xml.getInfo('aud_path')                       # 7. audio    [g]
 
     # -- main -- #
     # SIP class Init
