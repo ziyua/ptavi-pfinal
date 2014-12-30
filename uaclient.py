@@ -89,6 +89,7 @@ class UAclient_SIP:
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.my_socket.connect(addr)
+        print 'ip, port local:', self.my_socket.getsockname()
 
     def send(self, Method):
         LINE = '{} sip:{} {}\r\n'.format(Method, self.user, self.ver)
@@ -120,19 +121,25 @@ class UAclient_SIP:
                 self.addr[0], str(self.addr[1]))
             self.log.print2file(Debug)
         else:
-            # -- Debug --
-            Debug = 'Received from {}:{}: {}'.format(
-                    data[1][0], data[1][1], data[0])
-            self.log.print2file(Debug)
+            # proxy server reply a message '' because forwarding message.
+            if data[0] != '':
+                # -- Debug --
+                Debug = 'Received from {}:{}: {}'.format(
+                        data[1][0], data[1][1], repr(data[0]))
+                self.log.print2file(Debug)
 
-            if data[0].split()[:9] == self.trok and self.Method == 'INVITE':
-                self.send('ACK')
-                # -- RTP -- #
-                IPs = data[0].split()[9:][2]
-                Ports = int(data[0].split()[9:][-2])
-                rtps = toRTP((IPs, Ports), AUDIO, int(RTPORT))
-                rtps.send()
-                rtps.recv()
+                if data[0].split()[:9] == self.trok \
+                        and self.Method == 'INVITE':
+                    self.send('ACK')
+                    # -- RTP -- #
+                    IPs = data[0].split()[9:][2]
+                    Ports = int(data[0].split()[9:][-2])
+                    rtps = toRTP((IPs, Ports), AUDIO, int(RTPORT))
+                    rtps.send()
+                    rtps.recv()
+            else:
+                print 'data null.'
+                self.recv()
 
     def close(self):
         self.my_socket.close()
@@ -219,7 +226,7 @@ if __name__ == '__main__':
             sys.exit(Usage)
 
     # -- INVITE --
-    elif sys.argv[2] == 'INVITE' or 'BYE':
+    elif sys.argv[2] == 'INVITE' or sys.argv[2] == 'BYE':
         mat = re.match(r'^\w+@(\w+|\d+(\.\d+){3})$', sys.argv[3].strip())
         if not mat and not os.path.exists(xml.getInfo('aud_path')):
             sys.exit(Usage)
