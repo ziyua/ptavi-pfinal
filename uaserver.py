@@ -10,6 +10,9 @@ from uaclient import XML_handler
 from uaclient import toRTP
 from os import path
 
+from setcolor import setcolor
+c = setcolor(1)
+
 
 class UAhandler(SocketServer.DatagramRequestHandler):
 
@@ -18,24 +21,37 @@ class UAhandler(SocketServer.DatagramRequestHandler):
     PROTOCOL = r'^(' + ALLOW + r')\s' + USERSIP + r'\sSIP/2.0'
     sdp = {}
 
+    def reply(self, message):
+        ip, port = self.client_address
+        print 'send to {}:{}: {}'.format(ip, port, repr(message))
+        self.wfile.write(message)
+
     def handle(self):
         while 1:
             line = self.rfile.read()
+            c.echo(repr(line), 'red')
             if not line:
                 break
+
+            ip, port = self.client_address
+            print 'Received from {}:{}: {}'.format(ip, port, repr(line))
 
             try:
                 head, body = line.split('\r\n\r\n')
             except ValueError:
-                self.wfile.write('SIP/2.0 400 Bad Request\r\n\r\n')
+                self.reply('SIP/2.0 400 Bad Request\r\n\r\n')
                 break
 
             # if lines:
             mat = re.match(self.PROTOCOL, head.split('\r\n')[0])
             if not mat:
-                self.wfile.write('SIP/2.0 400 Bad Request\r\n\r\n')
+                self.reply('SIP/2.0 400 Bad Request\r\n\r\n')
             else:
                 Method, userSIP = mat.groups()[:2]
+                if userSIP != USER:
+                    self.reply('SIP/2.0 403 Forbidden\r\n\r\n')
+                    break
+
                 # Body: # -- SDP -- #
                 if len(head.split('\r\n')) != 1 \
                         and head.split(
@@ -53,13 +69,13 @@ class UAhandler(SocketServer.DatagramRequestHandler):
                               + 'SIP/2.0 180 Ringing\r\n\r\n' \
                               + 'SIP/2.0 200 OK\r\n\r\n' \
                               + 'v=0\r\n' \
-                              + 'o=' + USER + ' ' + userIP + ' 127.0.0.1\r\n' \
+                              + 'o=' + USER + ' ' + userIP + ' \r\n' \
                               + 's=misesion\r\n' \
                               + 't=0\r\n' \
                               + 'm=audio ' + RTPORT + ' RTP\r\n'
-                    self.wfile.write(message)
+                    self.reply(message)
                 elif Method == 'BYE':
-                    self.wfile.write('SIP/2.0 200 OK\r\n\r\n')
+                    self.reply('SIP/2.0 200 OK\r\n\r\n')
                 elif Method == 'ACK':
                     # Send RTP #
                     sdp = self.sdp[userSIP]
@@ -68,7 +84,11 @@ class UAhandler(SocketServer.DatagramRequestHandler):
                     rtp.send()
                     rtp.recv()
                 else:
-                    self.wfile.write('SIP/2.0 405 Method Not Allowed\r\n\r\n')
+                    self.reply('SIP/2.0 405 Method Not Allowed\r\n\r\n')
+
+    def finish(self):
+        if self.wfile.getvalue() != '':
+            self.socket.sendto(self.wfile.getvalue(), self.client_address)
 
 if __name__ == '__main__':
 
