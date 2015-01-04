@@ -48,9 +48,8 @@ class log2file:
         self.timeFormat = '%Y%m%d%H%M%S'  # 24Hours
 
     def print2file(self, text):
-        print repr(text)
-        text = text.replace('\r\n', ' ') + '\r\n'
-        print text[:-2]
+        print text
+        text = text + '\r\n'
         # file exists
         Method = 'a'
         if not os.path.exists(self.path):
@@ -61,7 +60,6 @@ class log2file:
         ofile = open(self.path, Method)
         ofile.write(Time + ' ' + text)
         ofile.close()
-
 
 """
 import socket
@@ -84,12 +82,11 @@ class UAclient_SIP:
                      '180', 'Ringing', self.ver, '200', 'OK']
         # Log
         self.log = log2file(logpath)
-        self.log.print2file('Starting...\r\n')
         # Cliente UDP simple (socket).
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.my_socket.connect(addr)
-        print 'ip, port local:', self.my_socket.getsockname()
+        # print 'ip, port local:', self.my_socket.getsockname()
 
     def send(self, Method):
         LINE = '{} sip:{} {}\r\n'.format(Method, self.user, self.ver)
@@ -99,7 +96,7 @@ class UAclient_SIP:
         elif Method == 'INVITE':
             LINE += 'Content-Type: application/sdp\r\n\r\n' \
                     + 'v=0\r\n' \
-                    + 'o=' + ORIGEN + ' ' + IP + ' \r\n' \
+                    + 'o=' + ORIGEN + ' ' + IP + '\r\n' \
                     + 's=misesion\r\n' \
                     + 't=0\r\n' \
                     + 'm=audio ' + RTPORT + ' RTP'
@@ -109,7 +106,8 @@ class UAclient_SIP:
         # --Method --
         self.Method = Method
         # -- Debug --
-        Debug = 'Sent to {}:{}: {}'.format(self.addr[0], self.addr[1], LINE)
+        Debug = 'Sent to {}:{}: {}'.format(
+            self.addr[0], self.addr[1], repr(LINE))
         self.log.print2file(Debug)
 
     def recv(self, bufferSize=1024):
@@ -121,31 +119,24 @@ class UAclient_SIP:
                 self.addr[0], str(self.addr[1]))
             self.log.print2file(Debug)
         else:
-            # proxy server reply a message '' because forwarding message.
-            if data[0] != '':
-                # -- Debug --
-                Debug = 'Received from {}:{}: {}'.format(
-                        data[1][0], data[1][1], repr(data[0]))
-                self.log.print2file(Debug)
+            # # proxy server reply a message '' because forwarding message.
+            # -- Debug --
+            Debug = 'Received from {}:{}: {}'.format(
+                    data[1][0], data[1][1], repr(data[0]))
+            self.log.print2file(Debug)
 
-                if data[0].split()[:9] == self.trok \
-                        and self.Method == 'INVITE':
-                    self.send('ACK')
-                    # -- RTP -- #
-                    IPs = data[0].split()[9:][2]
-                    Ports = int(data[0].split()[9:][-2])
-                    rtps = toRTP((IPs, Ports), AUDIO, int(RTPORT))
-                    rtps.send()
-                    rtps.recv()
-            else:
-                print 'data null.'
-                self.recv()
+            if data[0].split()[:9] == self.trok \
+                    and self.Method == 'INVITE':
+                self.send('ACK')
+                # -- RTP -- #
+                IPs = data[0].split()[9:][2]
+                Ports = int(data[0].split()[9:][-2])
+                rtps = toRTP((IPs, Ports), AUDIO, int(RTPORT))
+                rtps.send()
+                rtps.recv()
 
     def close(self):
         self.my_socket.close()
-        # -- Debug -- #
-        self.log.print2file('Finishing.\r\n')
-
 
 from threading import Thread
 
@@ -180,6 +171,7 @@ class toRTP:
         execute = "./mp32rtp -i {} -p {} < {}".format(
             self.addr[0], str(self.addr[1]), self.path)
         print 'run: ' + execute
+        os.system('chmod +x mp32rtp')
         os.system(execute)
 
     def send(self):
@@ -193,7 +185,7 @@ class toRTP:
             except socket.timeout:
                 break
             else:
-                print data[0][:10], 'from', data[1]
+                print data[0][:10], '...', 'from', data[1]
         self.rtpSocket.close()
 
 
@@ -217,8 +209,8 @@ if __name__ == '__main__':
     # Var ([g]: Global; [s]: Same name;)
     # -- REGISTER --
     if sys.argv[2] == 'REGISTER':
-        user = '{}@{}:{}'.format(
-            xml.getInfo('acc_username'), ip_local,
+        user = '{}:{}'.format(
+            xml.getInfo('acc_username'),
             xml.getInfo('uas_puerto'))                        # 3.1 user    [s]
         try:
             EXPIRES = str(int(sys.argv[3]))                   # 4.1 expires [g]
@@ -233,9 +225,8 @@ if __name__ == '__main__':
 
         user = sys.argv[3]                                    # 3.2 user    [s]
         # SDP
-        IP = ip_local                                         # 4.2 IP      [g]
-        ORIGEN = '{}@{}'.format(
-            xml.getInfo('acc_username'), ip_local)            # 3.1.2 ORIGEN[g]
+        IP = socket.gethostbyname(ip_local)                   # 4.2 IP      [g]
+        ORIGEN = xml.getInfo('acc_username')                  # 3.1.2 ORIGEN[g]
         # SDP >> rtp
         RTPORT = xml.getInfo('rtp_puerto')                    # 6. PortRTP  [g]
         AUDIO = xml.getInfo('aud_path')                       # 7. audio    [g]
