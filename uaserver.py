@@ -7,34 +7,34 @@ import sys
 import re
 
 from uaclient import XML_handler
+from uaclient import log2file
 from uaclient import toRTP
 from os import path
-
-from setcolor import setcolor
-c = setcolor(1)
 
 
 class UAhandler(SocketServer.DatagramRequestHandler):
 
     ALLOW = r'INVITE|ACK|BYE|CANCEL|OPTIONS|REGISTER'
-    USERSIP = r'sip:(\w+@(\w+|\d+(\.\d+){3}))(:\d+){0,1}'
+    USERSIP = r'sip:(\w+@([\w\.]+|\d+(\.\d+){3}))(:\d+){0,1}'
     PROTOCOL = r'^(' + ALLOW + r')\s' + USERSIP + r'\sSIP/2.0'
     sdp = {}
 
     def reply(self, message):
         ip, port = self.client_address
-        print 'send to {}:{}: {}'.format(ip, port, repr(message))
         self.wfile.write(message)
+        # LOG
+        LOG.print2file('send to {}:{}: {}'.format(ip, port, repr(message)))
 
     def handle(self):
         while 1:
             line = self.rfile.read()
-            c.echo(repr(line), 'red')
             if not line:
                 break
 
+            # LOG
             ip, port = self.client_address
-            print 'Received from {}:{}: {}'.format(ip, port, repr(line))
+            LOG.print2file(
+                'Received from {}:{}: {}'.format(ip, port, repr(line)))
 
             try:
                 head, body = line.split('\r\n\r\n')
@@ -69,7 +69,7 @@ class UAhandler(SocketServer.DatagramRequestHandler):
                               + 'SIP/2.0 180 Ringing\r\n\r\n' \
                               + 'SIP/2.0 200 OK\r\n\r\n' \
                               + 'v=0\r\n' \
-                              + 'o=' + USER + ' ' + userIP + ' \r\n' \
+                              + 'o=' + USER + ' ' + userIP + '\r\n' \
                               + 's=misesion\r\n' \
                               + 't=0\r\n' \
                               + 'm=audio ' + RTPORT + ' RTP\r\n'
@@ -106,11 +106,16 @@ if __name__ == '__main__':
     # global
     ip_local = xml.getInfo('uas_ip') == '' \
         and '127.0.0.1' or xml.getInfo('uas_ip')
-    USER = '{}@{}'.format(xml.getInfo('acc_username'), ip_local)
+    USER = xml.getInfo('acc_username')
     RTPORT = xml.getInfo('rtp_puerto')
     AUDIO = xml.getInfo('aud_path')
+    LOG = log2file(xml.getInfo('log_path'))
+    LOG.print2file('Starting...')
 
     # Socket Server
     serv = SocketServer.UDPServer(addr, UAhandler)
     print "Listening at port {}...".format(str(addr[1]))
-    serv.serve_forever()
+    try:
+        serv.serve_forever()
+    except KeyboardInterrupt:
+        LOG.print2file('Finishing...')
